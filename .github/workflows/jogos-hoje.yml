@@ -10,19 +10,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Instalar dependências e fonte Inter
         run: |
           pip install playwright requests
           playwright install --with-deps chromium
           sudo apt-get install -y fonts-inter
+
       - name: Gerar card
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python nhl_jogos_hoje.py --saida jogos-hoje.png
+        run: |
+          python nhl_jogos_hoje.py --saida jogos-hoje.png
+          echo "HOJE=$(TZ=America/Sao_Paulo date +%d/%m)" >> $GITHUB_ENV
+
+      - name: Enviar por e-mail
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          from: NHL Cards <${{ secrets.GMAIL_USER }}>
+          to: ${{ secrets.GMAIL_USER }}
+          subject: "NHL hoje ${{ env.HOJE }} - card do Story"
+          body: "Card de hoje em anexo. Salva no celular e posta no Story."
+          attachments: jogos-hoje.png
+
       - uses: actions/upload-artifact@v4
         with:
           name: jogos-hoje
