@@ -112,16 +112,17 @@ def cor(sigla):
     return CORES.get(sigla, "#FF6B1A")
 
 
-def render_html(linhas, dia):
+def render_html(linhas, dia, pagina=1, paginas=1, total_jogos=None):
     d = date.fromisoformat(dia)
     data_txt = f"{DIAS[d.weekday()]} · {d.day:02d} {MESES[d.month - 1]}"
-    n = len(linhas)
+    n = total_jogos if total_jogos is not None else len(linhas)
+    pag_html = f'<div class="pill pg">{pagina}/{paginas}</div>' if paginas > 1 else ""
     hero = next((l for l in linhas if l.get("destaque")), None)
     resto = [l for l in linhas if l is not hero]
 
     # área da lista se adapta ao número de jogos (com ou sem card de destaque)
-    duas = len(resto) > 7          # muitos jogos: lista em 2 colunas
-    area = 530 if hero else 1000
+    duas = False                   # dias cheios viram 2+ Stories (ver paginar)
+    area = 500 if hero else 840
     linhas_vis = -(-len(resto) // 2) if duas else len(resto)
     row = max(44, min(128, area // max(linhas_vis, 1) - 10))
     s = min(row / 128, 0.62) if duas else min(row / 128, 0.85)
@@ -185,6 +186,8 @@ def render_html(linhas, dia):
     .topo {{ display:flex; justify-content:space-between; align-items:center; }}
     .pill {{ font-weight:900; font-size:30px; letter-spacing:3px; padding:12px 26px; border-radius:999px;
       background:#fff; color:var(--navy); }}
+    .esq {{ display:flex; gap:12px; }}
+    .pill.pg {{ background:var(--laranja); color:#fff; }}
     .pill.o {{ background:transparent; color:#fff; border:3px solid rgba(255,255,255,.7); }}
     h1 {{ position:relative; flex-shrink:0; margin-top:60px; font-weight:900; line-height:.82; letter-spacing:-6px;
       transform:rotate(-8deg); transform-origin:left center; }}
@@ -234,7 +237,7 @@ def render_html(linhas, dia):
     <div class="faixa"></div>
     <div class="marca">NHL</div>
     <div class="wrap">
-      <div class="topo"><div class="pill">NHL HOJE</div><div class="pill o">{data_txt}</div></div>
+      <div class="topo"><div class="esq"><div class="pill">NHL HOJE</div>{pag_html}</div><div class="pill o">{data_txt}</div></div>
       <h1><span class="l1">HOJE TEM</span><span class="l2">HÓQUEI</span></h1>
       {corpo}
     </div>
@@ -265,10 +268,28 @@ def main():
     except Exception as e:
         sys.exit(f"Erro ao buscar a agenda da NHL: {e}")
     linhas = montar(jogos, carregar_pontos(a.sample), a.destaque)
-    saida = a.saida or f"jogos-hoje-{a.data}.png"
-    asyncio.run(screenshot(render_html(linhas, a.data), saida))
-    print(f"OK: {saida} ({len(linhas)} jogos)")
-    enviar_telegram(saida, linhas, a.data)
+    paginas = paginar(linhas)
+    base = a.saida or f"jogos-hoje-{a.data}.png"
+    for i, pag in enumerate(paginas, 1):
+        saida = base if i == 1 else base.replace(".png", f"-{i}.png")
+        html_str = render_html(pag, a.data, i, len(paginas), total_jogos=len(linhas))
+        asyncio.run(screenshot(html_str, saida))
+        print(f"OK: {saida} (story {i}/{len(paginas)}, {len(pag)} jogos)")
+        enviar_telegram(saida, linhas, a.data)
+
+
+def paginar(linhas, com_destaque=5, sem_destaque=9):
+    """Divide em Stories mantendo o layout de 1 coluna com logos grandes.
+    Story 1: jogo da noite + até 5 jogos. Demais: até 9 jogos cada."""
+    hero = [l for l in linhas if l.get("destaque")]
+    resto = [l for l in linhas if not l.get("destaque")]
+    primeiro = com_destaque if hero else sem_destaque
+    paginas = [hero + resto[:primeiro]]
+    resto = resto[primeiro:]
+    while resto:
+        paginas.append(resto[:sem_destaque])
+        resto = resto[sem_destaque:]
+    return paginas
 
 
 def enviar_telegram(arquivo, linhas, dia):
