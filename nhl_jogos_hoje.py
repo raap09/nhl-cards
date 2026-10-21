@@ -121,14 +121,16 @@ def render_html(linhas, dia):
 
     # área da lista se adapta ao número de jogos (com ou sem card de destaque)
     duas = len(resto) > 7          # muitos jogos: lista em 2 colunas
-    area = 620 if hero else 1000
+    area = 530 if hero else 1000
     linhas_vis = -(-len(resto) // 2) if duas else len(resto)
-    row = max(44, min(118, area // max(linhas_vis, 1) - 10))
-    s = min(row / 128, 0.62) if duas else row / 128
+    row = max(44, min(128, area // max(linhas_vis, 1) - 10))
+    s = min(row / 128, 0.62) if duas else min(row / 128, 0.85)
 
     def bolha(t, tam):
+        # logo solto, fundo transparente; versão "_dark" do logo é feita para fundo escuro
         sig = html.escape(t["sigla"])
-        img = (f'<img src="{html.escape(t["logo"])}" onerror="this.remove()">' if t["logo"] else "")
+        src = t["logo"].replace("_light.svg", "_dark.svg")
+        img = (f'<img src="{html.escape(src)}" onerror="this.remove()">' if src else "")
         return (f'<div class="bolha" style="--c:{cor(t["sigla"])};width:{tam}px;height:{tam}px">'
                 f'<span style="font-size:{int(tam*0.3)}px">{sig}</span>{img}</div>')
 
@@ -140,9 +142,9 @@ def render_html(linhas, dia):
           <div class="hero-bg"></div>
           <div class="hero-tag">🔥 JOGO DA NOITE</div>
           <div class="hero-row">
-            <div class="hero-time">{bolha(a, 124)}<b>{html.escape(a['sigla'])}</b></div>
+            <div class="hero-time">{bolha(a, 215)}<b>{html.escape(a['sigla'])}</b></div>
             <div class="vs">VS</div>
-            <div class="hero-time">{bolha(h, 124)}<b>{html.escape(h['sigla'])}</b></div>
+            <div class="hero-time">{bolha(h, 215)}<b>{html.escape(h['sigla'])}</b></div>
           </div>
           <div class="hero-hora">{hero['hora']}</div>
         </div>"""
@@ -152,9 +154,9 @@ def render_html(linhas, dia):
         a, h = l["fora"], l["casa"]
         itens.append(f"""
         <div class="jogo" style="--a:{cor(a['sigla'])};--h:{cor(h['sigla'])}">
-          <div class="t">{bolha(a, int(84*s)+6)}<b>{html.escape(a['sigla'])}</b></div>
+          <div class="t">{bolha(a, int(row*0.92))}<b>{html.escape(a['sigla'])}</b></div>
           <div class="at">@</div>
-          <div class="t">{bolha(h, int(84*s)+6)}<b>{html.escape(h['sigla'])}</b></div>
+          <div class="t">{bolha(h, int(row*0.92))}<b>{html.escape(h['sigla'])}</b></div>
           <div class="hora">{l['hora']}</div>
         </div>""")
 
@@ -188,7 +190,7 @@ def render_html(linhas, dia):
       transform:rotate(-8deg); transform-origin:left center; }}
     h1 .l1 {{ display:block; font-size:92px; margin-bottom:70px; color:var(--navy); }}
     h1 .l2 {{ display:block; font-size:170px; color:#fff; text-shadow:0 8px 0 var(--navy), 0 20px 40px rgba(0,0,0,.35); }}
-    .hero {{ position:relative; flex-shrink:0; margin-top:90px; height:290px; border-radius:36px; overflow:hidden;
+    .hero {{ position:relative; flex-shrink:0; margin-top:90px; height:360px; border-radius:36px; overflow:hidden;
       border:4px solid #fff; box-shadow:0 24px 60px rgba(0,0,0,.5); }}
     .hero-bg {{ position:absolute; inset:0;
       background:linear-gradient(115deg, var(--a) 0 49.6%, #fff 49.6% 50.4%, var(--h) 50.4% 100%); }}
@@ -197,12 +199,11 @@ def render_html(linhas, dia):
     .hero-tag {{ position:absolute; top:22px; left:50%; transform:translateX(-50%); z-index:2; background:var(--navy);
       font-weight:900; font-size:24px; letter-spacing:3px; padding:9px 22px; border-radius:999px; white-space:nowrap; }}
     .hero-row {{ position:absolute; inset:0; display:flex; align-items:center; justify-content:space-around; padding:30px 0 50px; z-index:1; }}
-    .hero-time {{ display:flex; flex-direction:column; align-items:center; gap:8px; }}
-    .hero-time b {{ font-size:50px; font-weight:900; letter-spacing:1px; text-shadow:0 4px 14px rgba(0,0,0,.5); }}
+    .hero-time {{ display:flex; flex-direction:column; align-items:center; gap:0; }}
+    .hero-time b {{ font-size:44px; font-weight:900; letter-spacing:1px; text-shadow:0 4px 14px rgba(0,0,0,.5); }}
     .vs {{ font-weight:900; font-size:64px; font-style:italic; text-shadow:0 4px 14px rgba(0,0,0,.6); }}
     .hero-hora {{ position:absolute; bottom:18px; left:50%; transform:translateX(-50%); z-index:2; background:var(--laranja);
       font-weight:900; font-size:44px; padding:4px 28px; border-radius:16px; box-shadow:0 8px 20px rgba(0,0,0,.4); }}
-    .hero .bolha {{ border-width:5px; }}
     .lista {{ flex-shrink:0; margin-top:{22 if hero else 110}px; display:flex; flex-direction:column; gap:10px; }}
     .lista.duas {{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }}
     .duas .jogo .bolha {{ display:none; }}
@@ -218,10 +219,12 @@ def render_html(linhas, dia):
     .at {{ text-align:center; font-weight:900; font-size:calc(34px*var(--s) + 6px); opacity:.55; }}
     .hora {{ font-weight:900; font-size:calc(48px*var(--s) + 6px); background:#fff; color:var(--navy);
       padding:calc(4px*var(--s) + 2px) calc(16px*var(--s) + 6px); border-radius:calc(12px*var(--s) + 4px); justify-self:end; }}
-    .bolha {{ position:relative; border-radius:50%; background:#fff; border:3px solid var(--c);
-      display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:hidden; }}
-    .bolha span {{ font-weight:900; color:var(--c); filter:brightness(.8); }}
-    .bolha img {{ position:absolute; inset:10%; width:80%; height:80%; object-fit:contain; background:#fff; }}
+    .bolha {{ position:relative;
+      display:flex; align-items:center; justify-content:center; flex-shrink:0; overflow:visible; }}
+    .bolha span {{ font-weight:900; color:#fff; opacity:.9; }}
+    .bolha img {{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain;
+      filter:drop-shadow(0 6px 16px rgba(0,0,0,.45)); }}
+    .bolha:has(img) span {{ visibility:hidden; }}
     .vazio {{ margin-top:140px; font-weight:900; font-size:110px; line-height:.95; }}
     .vazio em {{ font-style:normal; color:var(--laranja); }}
     .rodape {{ position:absolute; left:64px; right:64px; bottom:220px; display:flex; justify-content:space-between; align-items:center; }}
